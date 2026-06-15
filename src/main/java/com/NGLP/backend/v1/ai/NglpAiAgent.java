@@ -28,20 +28,20 @@ public class NglpAiAgent {
         this.conversationService = conversationService;
         this.aiToolsConfig = aiToolsConfig;
 
-        // 🌟 موجه النظام الأكاديمي القياسي باللغة الإنجليزية لضبط تصرفات النموذج
+        // 🌟 موجه النظام الأكاديمي المحدث والاحترافي
         String systemPrompt = """
-            You are a smart, professional, and friendly AI Tutor on the NGLP educational platform.
-            Your primary mission is to help students by answering their questions clearly, based on the course materials and lesson content.
-            
-            You will be provided with the student's question and optionally a [Video Transcript Context] extracted from the teacher's actual spoken words in the lesson video at the student's current timestamp.
-            
-            ANSWERING RULES:
-            1. Always structure your answers beautifully and format key programming concepts in clean code blocks or bullet points.
-            2. Keep your answers extremely CONCISE, DIRECT, and SHORT. Do not exceed 2 short paragraphs or a simple bulleted list (maximum 100-120 words).
-            3. Do not mix languages or use non-Arabic words (no Vietnamese, Chinese, etc.). All explanations must be in pure, standard Arabic.
-            4. Technical terms (like React, React Native) can be written as they are in English.
-            5. ALWAYS respond to the student in clear, friendly, and professional ARABIC language, directly helping them understand the lesson.
-            """;
+    You are a highly intelligent, professional, and friendly AI Tutor for the NGLP educational platform.
+    Your absolute primary mission is to help students understand their current programming lesson.
+    
+    You have access to the student's conversation history (Memory) and optionally a [Teacher's Transcript Context] which shows EXACTLY what the teacher is explaining at the exact video timestamp.
+    
+    CORE RULES & BEHAVIORS:
+    1. CONTEXT IS KING: If the student asks a vague question (e.g., "Give me an example", "Explain this", "Why?"), you MUST rely directly on the [Teacher's Transcript Context] and the recent chat history to figure out what they are referring to. Do not provide a generic answer.
+    2. BE CONCISE & DIRECT: Your answers must be extremely short, focused, and straight to the point. Maximum 2 short paragraphs or a brief bulleted list (100-150 words). NO fluff.
+    3. BEAUTIFUL FORMATTING: Always use Markdown formatting. Highlight key terms in **bold**, and format ALL programming concepts, variable names, or code snippets inside proper `code blocks`.
+    4. LANGUAGE POLICY: Your entire conversational response must be in pure, standard, friendly ARABIC. Do NOT use any other languages for the explanation. However, ALL technical programming terms (e.g., React, Java, Loop, Spring Boot) MUST remain in English.
+    5. STAY ON TOPIC: If the student asks something completely unrelated to programming or the platform, politely decline to answer and guide them back to the lesson.
+    """;
 
         // تهيئة الـ ChatClient مع ربط الذاكرة بشكل مستقر لحفظ سجل الدردشة
         this.chatClient = builder
@@ -102,7 +102,7 @@ public class NglpAiAgent {
         Conversation conversation = conversationService.getOrCreateConversation(userId, lessonId);
         String activeConversationId = String.valueOf(conversation.getId());
 
-        // 1. استباق جلب سياق تفريغ الفيديو عند الطابع الزمني الحالي (RAG)
+        // 1. استباق جلب سياق تفريغ الفيديو وتنسيقه بوضوح
         String transcriptContext = "";
         try {
             AiToolsConfig.TranscriptResponse response = aiToolsConfig.fetchLessonTranscript(
@@ -110,23 +110,38 @@ public class NglpAiAgent {
                     timestamp
             );
             if (response.found()) {
+                // تنسيق السياق بشكل معزول لكي لا يختلط بسؤال الطالب
                 transcriptContext = String.format(
-                        "\n[Video Transcript Context from Teacher's explanation at timestamp %s]:\n\"%s\"\n",
+                        """
+                        ---
+                        [TEACHER'S TRANSCRIPT AT TIMESTAMP %s]:
+                        "%s"
+                        ---
+                        """,
                         timestamp, response.context()
                 );
                 log.info("🎯 Proactively injected streaming transcript context for Lesson: {}, Timestamp: {}", lessonId, timestamp);
+            } else {
+                // في حال لم نجد سياق، نعطي إشارة للنموذج
+                transcriptContext = "[No transcript available for this exact timestamp. Rely on chat history.]\n";
             }
         } catch (Exception e) {
             log.error("❌ Failed to fetch transcript proactively in askStream(): ", e);
         }
 
-        // 2. صياغة الموجه المدمج للـ LLM
+        // 2. صياغة الموجه المدمج للـ LLM بهيكلية واضحة (Tags-like structure)
         String enrichedPrompt = String.format(
-                "Student Question: %s\n%s[System Info: lessonId=%s, timestamp=%s]",
-                message, transcriptContext, String.valueOf(lessonId), timestamp
+                """
+                %s
+                [SYSTEM INFO]: lessonId = %s, current_timestamp = %s
+                
+                [STUDENT'S MESSAGE]:
+                %s
+                """,
+                transcriptContext, lessonId, timestamp, message
         );
 
-        // 3. إرجاع الرد كتدفق حقيقي لحظي متوافق مع الفرونت إند
+        // 3. إرجاع الرد كتدفق لحظي
         return this.chatClient.prompt()
                 .user(enrichedPrompt)
                 .advisors(advisorSpec -> advisorSpec
@@ -134,5 +149,4 @@ public class NglpAiAgent {
                 )
                 .stream()
                 .content();
-    }
-}
+    }}
