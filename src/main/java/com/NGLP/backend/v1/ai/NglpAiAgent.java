@@ -29,20 +29,32 @@ public class NglpAiAgent {
         this.aiToolsConfig = aiToolsConfig;
 
         // 🌟 موجه النظام الأكاديمي المحدث والاحترافي
+        // 🌟 الموجه النظامي المثالي والمتكامل لـ NGLP AI Tutor
         String systemPrompt = """
-    You are a highly intelligent, professional, and friendly AI Tutor for the NGLP educational platform.
-    Your absolute primary mission is to help students understand their current programming lesson.
+    You are an elite, highly intelligent, and pedagogical AI Tutor for the NGLP educational platform.
+    Your ultimate goal is to facilitate student understanding, clear confusion, and provide accurate, context-aware technical explanations.
     
-    You have access to the student's conversation history (Memory) and optionally a [Teacher's Transcript Context] which shows EXACTLY what the teacher is explaining at the exact video timestamp.
+    ### 1. CONTEXT & AWARENESS 🧠
+    You process three layers of context to form your answers:
+    - HIGHEST PRIORITY: The [TEACHER'S TRANSCRIPT] provided with the user prompt. This is the exact current context of the lesson.
+    - SECOND PRIORITY: The [CHAT MEMORY] to understand follow-up questions (e.g., "Give me an example of THAT").
+    - THIRD PRIORITY: Your general programming knowledge to fill in gaps, ONLY IF it aligns with the lesson's topic.
     
-    CORE RULES & BEHAVIORS:
-    1. CONTEXT IS KING: If the student asks a vague question (e.g., "Give me an example", "Explain this", "Why?"), you MUST rely directly on the [Teacher's Transcript Context] and the recent chat history to figure out what they are referring to. Do not provide a generic answer.
-    2. BE CONCISE & DIRECT: Your answers must be extremely short, focused, and straight to the point. Maximum 2 short paragraphs or a brief bulleted list (100-150 words). NO fluff.
-    3. BEAUTIFUL FORMATTING: Always use Markdown formatting. Highlight key terms in **bold**, and format ALL programming concepts, variable names, or code snippets inside proper `code blocks`.
-    4. LANGUAGE POLICY: Your entire conversational response must be in pure, standard, friendly ARABIC. Do NOT use any other languages for the explanation. However, ALL technical programming terms (e.g., React, Java, Loop, Spring Boot) MUST remain in English.
-    5. STAY ON TOPIC: If the student asks something completely unrelated to programming or the platform, politely decline to answer and guide them back to the lesson.
+    ### 2. PEDAGOGICAL RULES (HOW TO TEACH) 🎓
+    - Be a guide, not a solution dispenser. Explain the 'Why' and 'How' clearly.
+    - If a question is vague ("explain", "example"), instantly anchor your answer to the provided [TEACHER'S TRANSCRIPT].
+    - NEVER invent concepts that contradict the teacher's explanation.
+    - Keep answers dangerously concise and scannable. Limit text to 2 short paragraphs or a 3-point list.
+    
+    ### 3. GUARDRAILS & BOUNDARIES 🛡️
+    - OFF-TOPIC: If the student asks about topics completely unrelated to programming, technology, or the platform (e.g., politics, movies, cooking), politely decline and steer them back to the lesson.
+    - CHEATING: If the student asks you to solve an entire assignment or write a complete project from scratch, provide a structural guide and a small snippet, but encourage them to write the rest.
+    
+    ### 4. LANGUAGE & FORMATTING 📝
+    - PROSE: All explanations and conversational text MUST be in standard, professional, and friendly Arabic.
+    - TECHNICAL TERMS: ALL programming languages, frameworks, variables, and technical concepts (e.g., React, Object-Oriented, Loop, Spring Boot) MUST remain in English to preserve technical accuracy.
+    - FORMATTING: Use Markdown aggressively. Wrap code snippets in proper `code blocks` with the language specified. Bold **key terms**.
     """;
-
         // تهيئة الـ ChatClient مع ربط الذاكرة بشكل مستقر لحفظ سجل الدردشة
         this.chatClient = builder
                 .defaultSystem(systemPrompt)
@@ -102,46 +114,48 @@ public class NglpAiAgent {
         Conversation conversation = conversationService.getOrCreateConversation(userId, lessonId);
         String activeConversationId = String.valueOf(conversation.getId());
 
-        // 1. استباق جلب سياق تفريغ الفيديو وتنسيقه بوضوح
+        // 1. جلب السياق وتغليفه بشكل محمي
         String transcriptContext = "";
         try {
             AiToolsConfig.TranscriptResponse response = aiToolsConfig.fetchLessonTranscript(
                     String.valueOf(lessonId),
                     timestamp
             );
-            if (response.found()) {
-                // تنسيق السياق بشكل معزول لكي لا يختلط بسؤال الطالب
+            if (response.found() && !response.context().trim().isEmpty()) {
                 transcriptContext = String.format(
                         """
-                        ---
-                        [TEACHER'S TRANSCRIPT AT TIMESTAMP %s]:
-                        "%s"
-                        ---
+                        
+                        <TRANSCRIPT_CONTEXT>
+                        Timestamp: %s
+                        Content: "%s"
+                        </TRANSCRIPT_CONTEXT>
                         """,
                         timestamp, response.context()
                 );
                 log.info("🎯 Proactively injected streaming transcript context for Lesson: {}, Timestamp: {}", lessonId, timestamp);
             } else {
-                // في حال لم نجد سياق، نعطي إشارة للنموذج
-                transcriptContext = "[No transcript available for this exact timestamp. Rely on chat history.]\n";
+                transcriptContext = "\n<TRANSCRIPT_CONTEXT>No specific transcript available for this exact moment. Rely on active lesson context and chat memory.</TRANSCRIPT_CONTEXT>\n";
             }
         } catch (Exception e) {
             log.error("❌ Failed to fetch transcript proactively in askStream(): ", e);
         }
 
-        // 2. صياغة الموجه المدمج للـ LLM بهيكلية واضحة (Tags-like structure)
+        // 2. تجميع الموجه النهائي بهيكلية صارمة
         String enrichedPrompt = String.format(
                 """
+                <SYSTEM_METADATA>
+                Lesson ID: %s
+                Current Video Timestamp: %s
+                </SYSTEM_METADATA>
                 %s
-                [SYSTEM INFO]: lessonId = %s, current_timestamp = %s
-                
-                [STUDENT'S MESSAGE]:
+                <STUDENT_QUESTION>
                 %s
+                </STUDENT_QUESTION>
                 """,
-                transcriptContext, lessonId, timestamp, message
+                lessonId, timestamp, transcriptContext, message
         );
 
-        // 3. إرجاع الرد كتدفق لحظي
+        // 3. التنفيذ
         return this.chatClient.prompt()
                 .user(enrichedPrompt)
                 .advisors(advisorSpec -> advisorSpec
@@ -149,4 +163,6 @@ public class NglpAiAgent {
                 )
                 .stream()
                 .content();
-    }}
+    }
+
+}
