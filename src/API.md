@@ -251,3 +251,55 @@ For create/update requests include Content-Type: application/json.
 Replace :id in path templates with the actual resource id.
 
 Inspect nested objects (lesson, course, category, conversation) for required fields when creating resources.
+
+---
+
+## Quizzes (AI-Generated & Manual)
+Base path: `/api/v1/quizzes`
+
+**Status values:** `DRAFT` (invisible to students), `PUBLISHED` (visible to enrolled students)
+
+### POST /api/v1/quizzes/generate
+- **Description:** Generate a quiz with AI based on lesson transcript. Quiz is saved as DRAFT.
+- **Headers:** `X-User-Role: ROLE_TEACHER`, `X-User-Id: <teacherId>`
+- **Request body:**
+  ```json
+  {
+    "lessonId": 1,
+    "title": "Quiz Title",
+    "numberOfQuestions": 5,
+    "teacherId": 2
+  }
+  ```
+
+### GET /api/v1/quizzes/:id
+- **Description:** Get full quiz details including correct answers (teacher/admin only).
+- **Headers:** `X-User-Role: ROLE_TEACHER` or `ROLE_ADMIN`
+
+### GET /api/v1/quizzes/:id/student-view
+- **Description:** Get quiz without revealing correct answers (student only).
+- **Headers:** `X-User-Role: ROLE_STUDENT`
+
+### GET /api/v1/quizzes?lessonId=:lessonId
+- **Description:** List quizzes for a lesson. Teachers get all (DRAFT + PUBLISHED); students get only PUBLISHED.
+
+### PUT /api/v1/quizzes/:id/questions/:questionId
+- **Description:** Update a question, its choices, weight, or explanation.
+
+### POST /api/v1/quizzes/:id/questions
+- **Description:** Add a question manually. Exactly 4 choices with exactly 1 correct required.
+
+### DELETE /api/v1/quizzes/:id/questions/:questionId
+- **Description:** Delete a question from a quiz.
+
+### POST /api/v1/quizzes/:id/publish
+- **Description:** Publish a quiz (DRAFT -> PUBLISHED). Must have at least one question.
+
+### POST /api/v1/quizzes/:id/attempts
+- **Description:** Start a new attempt. Student must be enrolled. attemptNumber auto-increments.
+
+### POST /api/v1/quizzes/attempts/:attemptId/submit
+- **Description:** Submit all answers at once. Auto-grading: pointsAwarded = difficultyWeight if correct, else 0. Score = sum of pointsAwarded.
+
+### GET /api/v1/quizzes/attempts?studentId=:studentId&quizId=:quizId
+- **Description:** Get all attempts for a student on a quiz. Access: student (own), teacher (owns quiz), admin.
