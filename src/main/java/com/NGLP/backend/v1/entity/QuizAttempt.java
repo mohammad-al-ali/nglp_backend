@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -35,5 +36,6 @@ public class QuizAttempt {
     private Integer score;
 
     @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<QuizAnswer> answers;
+    @Builder.Default
+    private List<QuizAnswer> answers = new ArrayList<>();
 }

@@ -43,7 +43,7 @@ public class QuizService {
                 .orElseThrow(() -> new EntityNotFoundException("المعلم غير موجود"));
 
         QuizAiService.AiQuizResponse aiResponse = quizAiService.generateQuizQuestions(
-                request.lessonId(), request.numberOfQuestions());
+                request.teacherId(), request.lessonId(), request.numberOfQuestions());
         log.info("✅ الذكاء الاصطناعي ولد {} سؤال", aiResponse.questions().size());
 
         Quiz quiz = Quiz.builder()
@@ -280,8 +280,8 @@ public class QuizService {
             totalScore += pointsAwarded;
         }
 
+        attempt.getAnswers().addAll(answerEntities);
         answerRepo.saveAll(answerEntities);
-        attempt.setAnswers(answerEntities);
         attempt.setScore(totalScore);
         attempt.setSubmittedAt(LocalDateTime.now());
         QuizAttempt savedAttempt = attemptRepo.save(attempt);

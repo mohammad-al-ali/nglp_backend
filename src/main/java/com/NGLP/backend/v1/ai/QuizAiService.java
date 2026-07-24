@@ -2,7 +2,6 @@ package com.NGLP.backend.v1.ai;
 
 import com.NGLP.backend.v1.entity.LessonTranscript;
 import com.NGLP.backend.v1.service.LessonTranscriptService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
@@ -11,11 +10,15 @@ import java.util.List;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class QuizAiService {
 
-    private final ChatClient.Builder chatClientBuilder;
+    private final LlmRouterService routerService;
     private final LessonTranscriptService transcriptService;
+
+    public QuizAiService(LlmRouterService routerService, LessonTranscriptService transcriptService) {
+        this.routerService = routerService;
+        this.transcriptService = transcriptService;
+    }
 
     public record AiQuizResponse(List<AiQuestion> questions) {
         public record AiQuestion(
@@ -28,7 +31,7 @@ public class QuizAiService {
         public record AiChoice(String choiceText, boolean isCorrect) {}
     }
 
-    public AiQuizResponse generateQuizQuestions(Long lessonId, Integer numberOfQuestions) {
+    public AiQuizResponse generateQuizQuestions(Long userId, Long lessonId, Integer numberOfQuestions) {
         List<LessonTranscript> transcripts = transcriptService.findByLesson(lessonId);
         String transcriptText = buildTranscriptText(transcripts);
 
@@ -60,7 +63,7 @@ public class QuizAiService {
             Return the response as a JSON object with a "questions" array.
             """.formatted(transcriptText, numberOfQuestions);
 
-        ChatClient chatClient = chatClientBuilder.build();
+        ChatClient chatClient = routerService.createBuilder(userId).build();
 
         try {
             AiQuizResponse response = chatClient.prompt()
