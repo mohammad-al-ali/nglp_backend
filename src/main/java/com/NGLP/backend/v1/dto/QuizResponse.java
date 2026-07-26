@@ -21,10 +21,5 @@ public record QuizResponse(
         String explanation,
         List<ChoiceResponse> choices
     ) {}
-
-    public record ChoiceResponse(
-        Long id,
-        String choiceText,
-        Boolean isCorrect
-    ) {}
+    public record ChoiceResponse(Long id, String choiceText, Boolean isCorrect) {}
 }

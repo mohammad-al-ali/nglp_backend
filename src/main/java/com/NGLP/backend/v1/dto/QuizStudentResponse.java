@@ -19,9 +19,5 @@ public record QuizStudentResponse(
         Integer orderIndex,
         List<StudentChoiceResponse> choices
     ) {}
-
-    public record StudentChoiceResponse(
-        Long id,
-        String choiceText
-    ) {}
+    public record StudentChoiceResponse(Long id, String choiceText) {}
 }
