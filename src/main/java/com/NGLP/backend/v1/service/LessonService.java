@@ -32,11 +32,17 @@ public class LessonService {
     }
 
     @Transactional
-    public Lesson create(Long courseId , Lesson lesson, MultipartFile file) {
+    public Lesson create(Long courseId , Lesson lesson, MultipartFile file, MultipartFile image) {
         // 1. حفظ الفيديو محلياً والحصول على الرابط (مثلاً: /uploads/videos/abc.mp4)
         String videoUrl = fileStorageService.saveVideo(file);
         // 2. إسناد الرابط للدرس
         lesson.setVideoUrl(videoUrl);
+
+        // صورة مصغرة اختيارية للدرس
+        if (image != null && !image.isEmpty()) {
+            lesson.setImageUrl(fileStorageService.saveImage(image));
+        }
+
         Course course = courseRepo.findById(courseId)
                 .orElseThrow(()->new EntityNotFoundException("course not found with this Id :"+courseId));
         // 3. حفظ بيانات الدرس في قاعدة البيانات

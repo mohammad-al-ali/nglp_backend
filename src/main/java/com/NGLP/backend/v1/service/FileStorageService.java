@@ -16,6 +16,45 @@ public class FileStorageService {
 
     // المجلد الذي سنحفظ فيه الفيديوهات (كما يعمل معك بنجاح)
     private final String UPLOAD_DIR = "uploads/videos/";
+    private final String IMAGE_UPLOAD_DIR = "uploads/images/";
+
+    public String saveImage(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("عذراً، يجب إرفاق ملف صورة صالح.");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new IllegalArgumentException("عذراً، الملف المرفق ليس صورة صالحة.");
+        }
+
+        try {
+            Path uploadPath = Paths.get(IMAGE_UPLOAD_DIR);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null) {
+                originalFilename = "image.jpg";
+            }
+            originalFilename = StringUtils.cleanPath(originalFilename);
+
+            String extension = originalFilename.contains(".")
+                    ? originalFilename.substring(originalFilename.lastIndexOf("."))
+                    : ".jpg";
+
+            String uniqueFilename = UUID.randomUUID().toString() + extension;
+            Path filePath = uploadPath.resolve(uniqueFilename).normalize();
+
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            return "/uploads/images/" + uniqueFilename;
+
+        } catch (IOException e) {
+            throw new RuntimeException("فشل في حفظ الصورة: " + e.getMessage(), e);
+        }
+    }
 
     public String saveVideo(MultipartFile file) {
         // 1. حماية النظام: التحقق من أن الملف ليس فارغاً (مأخوذة من التعديل الجديد)

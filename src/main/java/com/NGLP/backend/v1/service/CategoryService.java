@@ -5,12 +5,14 @@ import com.NGLP.backend.v1.repo.CategoryRepo;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class CategoryService {
     private final CategoryRepo categoryRepo;
+    private final FileStorageService fileStorageService;
 
     public List<Category> findRootCategories() {
         return categoryRepo.findByParentIsNull();
@@ -37,6 +39,13 @@ public class CategoryService {
             existing.setParent(category.getParent());
             return categoryRepo.save(existing);
         }).orElseThrow(() -> new EntityNotFoundException("Category Not found with this id"+ id));
+    }
+
+    public Category uploadImage(Long id, MultipartFile image) {
+        Category category = findById(id);
+        String imageUrl = fileStorageService.saveImage(image);
+        category.setImageUrl(imageUrl);
+        return categoryRepo.save(category);
     }
 
     public void delete(Long id) {

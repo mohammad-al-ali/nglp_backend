@@ -3,8 +3,10 @@ package com.NGLP.backend.v1.controller;
 import com.NGLP.backend.v1.entity.User;
 import com.NGLP.backend.v1.service.UserService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import lombok.RequiredArgsConstructor;
 
@@ -45,6 +47,14 @@ public class UserController {
     @PutMapping("/{id}")
     public ResponseEntity<User> updateProfile(@PathVariable Long id, @RequestBody User user) {
         return ResponseEntity.ok(userService.updateProfile(id, user));
+    }
+
+    /**
+     * رفع أو استبدال الصورة الشخصية (الأفاتار) للمستخدم
+     */
+    @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<User> uploadImage(@PathVariable Long id, @RequestPart("image") MultipartFile image) {
+        return ResponseEntity.ok(userService.uploadAvatar(id, image));
     }
 
     /**

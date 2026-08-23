@@ -2,8 +2,10 @@ package com.NGLP.backend.v1.controller;
 
 import com.NGLP.backend.v1.entity.Course;
 import com.NGLP.backend.v1.service.CourseService;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -39,6 +41,11 @@ public class CourseController {
 
     @PutMapping("/{id}")
     public Course update(@PathVariable Long id, @RequestBody Course course) { return courseService.update(id, course); }
+
+    @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Course uploadImage(@PathVariable Long id, @RequestPart("image") MultipartFile image) {
+        return courseService.uploadImage(id, image);
+    }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {

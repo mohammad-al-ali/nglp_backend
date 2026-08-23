@@ -67,12 +67,12 @@ public class LlmRouterService {
     public UserAiPreference updateUserPreference(Long userId, String providerKey, String modelKey) {
         LlmProvider provider = providerMap.get(providerKey);
         if (provider == null || !provider.isEnabled()) {
-            throw new IllegalArgumentException("المزود غير متاح: " + providerKey);
+            throw new IllegalArgumentException("The provider not found" + providerKey);
         }
         boolean modelValid = provider.getModels().stream()
                 .anyMatch(m -> m.key().equals(modelKey));
         if (!modelValid) {
-            throw new IllegalArgumentException("الموديل غير متاح للمزود: " + modelKey);
+            throw new IllegalArgumentException("The model is not available for this provider" + modelKey);
         }
         UserAiPreference pref = preferenceRepo.findByUserId(userId)
                 .orElse(UserAiPreference.builder()

@@ -26,6 +26,8 @@ public class Category {
 
     private String name;
 
+    private String imageUrl;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)

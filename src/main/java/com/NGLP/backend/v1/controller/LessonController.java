@@ -28,12 +28,13 @@ public class LessonController {
             // 🌟 عدنا للكود النظيف: نستلم كائن Lesson مباشرة
             @PathVariable Long courseId,
             @RequestPart("lesson") Lesson lesson,
-            @RequestPart("file") MultipartFile file) {
+            @RequestPart("file") MultipartFile file,
+            @RequestPart(value = "image", required = false) MultipartFile image) {
 
         log.info("📩 طلب إنشاء درس جديد مع الفيديو: {}", lesson.getTitle());
 
         try {
-            Lesson savedLesson = lessonService.create(courseId ,lesson, file);
+            Lesson savedLesson = lessonService.create(courseId ,lesson, file, image);
             return ResponseEntity.ok(savedLesson);
         } catch (Exception e) {
             log.error("❌ حدث خطأ أثناء الرفع: ", e);

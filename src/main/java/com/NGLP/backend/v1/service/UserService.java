@@ -7,6 +7,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -16,6 +17,7 @@ public class UserService {
     private final UserRepo userRepo;
     private final RoleRepo roleRepo;
     private final PasswordEncoder passwordEncoder;
+    private final FileStorageService fileStorageService;
 
     public List<User> findAll() {
         return userRepo.findAll();
@@ -93,6 +95,13 @@ public class UserService {
             existing.setBlocked(updatedUser.getBlocked());
             return userRepo.save(existing);
         }).orElseThrow(() -> new EntityNotFoundException("User not found with id " + id));
+    }
+
+    public User uploadAvatar(Long id, MultipartFile image) {
+        User user = findById(id);
+        String avatarUrl = fileStorageService.saveImage(image);
+        user.setAvatarUrl(avatarUrl);
+        return userRepo.save(user);
     }
 
     public void delete(Long id) {

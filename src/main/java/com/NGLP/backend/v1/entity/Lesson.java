@@ -21,6 +21,7 @@ public class Lesson {
     @Column(columnDefinition = "TEXT")
     private String description;
     private String videoUrl;
+    private String imageUrl;
     private Integer durationSeconds;
 
     @ManyToOne

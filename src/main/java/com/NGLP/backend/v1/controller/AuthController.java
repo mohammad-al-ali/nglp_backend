@@ -57,7 +57,12 @@ public class AuthController {
         userRepo.save(user);
 
         return ResponseEntity.ok(
-                Map.of("message", "تم التسجيل بنجاح")
+                Map.of(
+                        "id", user.getId(),
+                        "fullName", user.getFullName(),
+                        "email", user.getEmail(),
+                        "role", user.getRole().getName()
+                )
         );
     }
 

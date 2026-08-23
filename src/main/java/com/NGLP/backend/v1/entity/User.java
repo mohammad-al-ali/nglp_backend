@@ -22,6 +22,7 @@ public class User {
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password; //TODO ENCRYPTION
     private Boolean blocked;
+    private String avatarUrl;
     @ManyToOne
     @JoinColumn(name = "role_id")
     private Role role;

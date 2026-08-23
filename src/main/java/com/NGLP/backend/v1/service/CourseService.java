@@ -5,6 +5,7 @@ import com.NGLP.backend.v1.repo.CourseRepo;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 @Service
@@ -12,6 +13,7 @@ import java.util.List;
 public class CourseService {
     private final CourseRepo courseRepo;
     private final LessonService lessonService; // حقن للتحقق من الدروس قبل الحذف
+    private final FileStorageService fileStorageService;
 
     // 1. يمكننا الإبقاء على findAll للوحة تحكم الإدارة (Admin Dashboard)
     public List<Course> findAll() {
@@ -44,6 +46,13 @@ public class CourseService {
             existing.setTeacher(course.getTeacher());
             return courseRepo.save(existing);
         }).orElseThrow(() -> new EntityNotFoundException("Course not found id"+ id));
+    }
+
+    public Course uploadImage(Long id, MultipartFile image) {
+        Course course = findById(id);
+        String imageUrl = fileStorageService.saveImage(image);
+        course.setImageUrl(imageUrl);
+        return courseRepo.save(course);
     }
 
     // 3. الحذف الآمن (Safe Delete)
