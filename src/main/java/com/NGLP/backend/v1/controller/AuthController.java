@@ -53,6 +53,7 @@ public class AuthController {
         user.setEmail(request.email());
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setRole(role);
+        user.setBlocked(false);
 
         userRepo.save(user);
 

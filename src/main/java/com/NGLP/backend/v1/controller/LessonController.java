@@ -41,6 +41,11 @@ public class LessonController {
             return ResponseEntity.badRequest().body("حدث خطأ: " + e.getMessage());
         }
     }
+    @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Lesson uploadImage(@PathVariable Long id, @RequestPart("image") MultipartFile image) {
+        return lessonService.uploadImage(id, image);
+    }
+
     @PutMapping("/{id}")
     public Lesson update(@PathVariable Long id, @RequestBody Lesson lesson) { return lessonService.update(id, lesson); }
 

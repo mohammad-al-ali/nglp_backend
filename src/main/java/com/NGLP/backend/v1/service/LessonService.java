@@ -33,6 +33,12 @@ public class LessonService {
 
     @Transactional
     public Lesson create(Long courseId , Lesson lesson, MultipartFile file, MultipartFile image) {
+        // حماية ضد صفوف دروس فارغة: لوحظت 7 صفوف بعنوان NULL في القاعدة سابقاً،
+        // ما أدى إلى تعطل بذر البيانات عند الإقلاع. رفض الطلب هنا بدل حفظه فارغاً.
+        if (lesson == null || lesson.getTitle() == null || lesson.getTitle().isBlank()) {
+            throw new IllegalArgumentException("عذراً، يجب إدخال عنوان صالح للدرس.");
+        }
+
         // 1. حفظ الفيديو محلياً والحصول على الرابط (مثلاً: /uploads/videos/abc.mp4)
         String videoUrl = fileStorageService.saveVideo(file);
         // 2. إسناد الرابط للدرس
@@ -58,6 +64,13 @@ public class LessonService {
         transcriptionService.extractAndSaveTranscript(savedLesson, absolutePath);
 
         return savedLesson;
+    }
+
+    public Lesson uploadImage(Long id, MultipartFile image) {
+        Lesson lesson = findById(id);
+        String imageUrl = fileStorageService.saveImage(image);
+        lesson.setImageUrl(imageUrl);
+        return lessonRepo.save(lesson);
     }
 
     public Lesson update(Long id, Lesson lesson) {

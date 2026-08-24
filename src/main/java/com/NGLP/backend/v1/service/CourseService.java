@@ -38,12 +38,17 @@ public class CourseService {
         return courseRepo.save(course);
     }
 
+    // تحديث آمن: النموذج الوحيد الذي يستدعي هذا المسار (ManageCourse.jsx) لا يرسل
+    // "teacher" إطلاقاً، فتعيينه دون شرط كان يحوّله دائماً إلى null ويفصل الكورس
+    // عن معلمه الفعلي في كل مرة يُحفظ فيها العنوان أو الوصف أو التصنيف فقط.
     public Course update(Long id, Course course) {
         return courseRepo.findById(id).map(existing -> {
             existing.setTitle(course.getTitle());
             existing.setDescription(course.getDescription());
             existing.setCategory(course.getCategory());
-            existing.setTeacher(course.getTeacher());
+            if (course.getTeacher() != null) {
+                existing.setTeacher(course.getTeacher());
+            }
             return courseRepo.save(existing);
         }).orElseThrow(() -> new EntityNotFoundException("Course not found id"+ id));
     }
