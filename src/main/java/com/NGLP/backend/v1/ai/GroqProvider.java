@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.openai.OpenAiChatModel.ResponseFormat;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.http.okhttp.SpringAiOpenAiHttpClient;
 import org.springframework.beans.factory.annotation.Value;
@@ -58,9 +59,19 @@ public class GroqProvider implements LlmProvider {
                     .build();
             OpenAIClient client = new OpenAIClientImpl(options);
             OpenAIClientAsync clientAsync = client.async();
+            // بدون هذا، بعض نماذج Groq (مثل gpt-oss) قد تجيب بنص عادي بدل JSON
+            // صِرف رغم تعليمات الصيغة في الـ prompt، فيفشل تحويل الرد إلى الكائن
+            // المتوقع (AiQuizResponse) عند توليد الكويز.
+            // maxCompletionTokens: نماذج gpt-oss "تفكّر" قبل كتابة الإجابة، وهذا
+            // الاستدلال الداخلي يستهلك من نفس حصة التوكنز. بدون حد كافٍ يُستنفد
+            // الاستدلال الحصة فيفشل توليد الـ JSON النهائي بخطأ 400 من Groq.
+            // 4096 (لا أعلى): حساب Groq المجاني هنا محدود بـ 8000 توكن/دقيقة
+            // إجمالاً (prompt + completion)؛ رفعها لـ 8192 كان يتجاوز الحد فوراً.
             OpenAiChatOptions chatOptions = OpenAiChatOptions.builder()
                     .model(config.getDefaultModel())
                     .temperature(0.3)
+                    .maxCompletionTokens(4096)
+                    .responseFormat(ResponseFormat.builder().type(ResponseFormat.Type.JSON_OBJECT).build())
                     .build();
             this.chatModel = OpenAiChatModel.builder()
                     .openAiClient(client)

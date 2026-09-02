@@ -297,6 +297,35 @@ public class QuizService {
         return attemptRepo.findByQuizIdAndStudentIdOrderByAttemptNumberDesc(quizId, studentId);
     }
 
+    // بلا حالة عمداً: لا تُنشئ أو تُعدّل أي QuizAttempt/QuizAnswer، فقط تُخبر
+    // الواجهة بصحة اختيار واحد فور الضغط عليه (تغذية راجعة فورية لكل سؤال).
+    // التسليم الرسمي وحساب النتيجة يبقيان حصراً عبر submitAttempt في النهاية.
+    public QuizAnswerCheckResponse checkAnswer(Long questionId, Long choiceId) {
+        QuizQuestion question = questionRepo.findById(questionId)
+                .orElseThrow(() -> new EntityNotFoundException("السؤال غير موجود: " + questionId));
+        QuizChoice selectedChoice = choiceRepo.findById(choiceId)
+                .orElseThrow(() -> new EntityNotFoundException("الاختيار غير موجود: " + choiceId));
+
+        if (selectedChoice.getQuestion() == null || !selectedChoice.getQuestion().getId().equals(questionId)) {
+            throw new IllegalArgumentException("هذا الاختيار لا ينتمي لهذا السؤال");
+        }
+
+        boolean isCorrect = Boolean.TRUE.equals(selectedChoice.getIsCorrect());
+        boolean showAnswers = Boolean.TRUE.equals(question.getQuiz().getShowAnswersAfterSubmit());
+
+        QuizChoice correctChoice = question.getChoices() == null ? null
+                : question.getChoices().stream()
+                        .filter(c -> Boolean.TRUE.equals(c.getIsCorrect()))
+                        .findFirst()
+                        .orElse(null);
+
+        String explanation = showAnswers ? question.getExplanation() : null;
+        Long correctChoiceId = showAnswers && correctChoice != null ? correctChoice.getId() : null;
+        String correctChoiceText = showAnswers && correctChoice != null ? correctChoice.getChoiceText() : null;
+
+        return new QuizAnswerCheckResponse(isCorrect, explanation, correctChoiceId, correctChoiceText);
+    }
+
     // ──────────────────────────────────────────────
     //  Internal Helpers
     // ──────────────────────────────────────────────

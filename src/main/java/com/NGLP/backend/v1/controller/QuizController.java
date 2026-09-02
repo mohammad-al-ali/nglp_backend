@@ -71,6 +71,12 @@ public class QuizController {
         return ResponseEntity.ok(quizService.publishQuiz(id));
     }
 
+    @GetMapping("/questions/{questionId}/choices/{choiceId}/check")
+    public ResponseEntity<?> checkAnswer(@PathVariable Long questionId, @PathVariable Long choiceId) {
+        log.info("🔎 تحقق فوري من إجابة: questionId={}, choiceId={}", questionId, choiceId);
+        return ResponseEntity.ok(quizService.checkAnswer(questionId, choiceId));
+    }
+
     @PostMapping("/{id}/attempts")
     public ResponseEntity<?> startAttempt(@PathVariable Long id, @RequestParam Long studentId) {
         log.info("🎯 بدء محاولة: quizId={}, studentId={}", id, studentId);

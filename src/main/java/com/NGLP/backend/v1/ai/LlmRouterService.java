@@ -5,6 +5,7 @@ import com.NGLP.backend.v1.entity.UserAiPreference;
 import com.NGLP.backend.v1.repo.UserAiPreferenceRepo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import java.util.List;
@@ -20,15 +21,18 @@ public class LlmRouterService {
     private final UserAiPreferenceRepo preferenceRepo;
     private final LlmModelsConfig modelsConfig;
     private final Map<String, LlmProvider> providerMap;
+    private final String defaultProviderKey;
 
     public LlmRouterService(List<LlmProvider> providers,
                             UserAiPreferenceRepo preferenceRepo,
-                            LlmModelsConfig modelsConfig) {
+                            LlmModelsConfig modelsConfig,
+                            @Value("${nglp.llm.default-provider:groq}") String defaultProviderKey) {
         this.providers = providers;
         this.preferenceRepo = preferenceRepo;
         this.modelsConfig = modelsConfig;
         this.providerMap = providers.stream()
                 .collect(Collectors.toMap(LlmProvider::getProviderKey, Function.identity()));
+        this.defaultProviderKey = defaultProviderKey;
     }
 
     public LlmProvider resolveProvider(Long userId) {
@@ -39,11 +43,22 @@ public class LlmRouterService {
                 return provider;
             }
         }
+
+        // بدون تفضيل محفوظ (أو مزوّده لم يعد متاحاً): نستخدم المزوّد الافتراضي
+        // المحدد صراحة بدل الاعتماد على ترتيب حقن Spring لقائمة LlmProvider، وهو
+        // غير مضمون ولا يجب أن يقرر أي مزوّد يُستهلك أولاً.
+        LlmProvider defaultProvider = providerMap.get(defaultProviderKey);
+        if (defaultProvider != null && defaultProvider.isEnabled()) {
+            log.info("User {} has no usable AI preference, using default provider {}", userId, defaultProviderKey);
+            return defaultProvider;
+        }
+
         LlmProvider fallback = providers.stream()
                 .filter(LlmProvider::isEnabled)
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("لا يوجد مزود LLM مفعّل حالياً"));
-        log.info("User {} has no AI preference, falling back to {}", userId, fallback.getProviderKey());
+        log.info("User {} has no AI preference and default provider {} is unavailable, falling back to {}",
+                userId, defaultProviderKey, fallback.getProviderKey());
         return fallback;
     }
 
