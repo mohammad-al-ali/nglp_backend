@@ -1,6 +1,7 @@
 package com.NGLP.backend.v1.service;
 
 import com.NGLP.backend.v1.entity.Course;
+import com.NGLP.backend.v1.exception.BusinessRuleException;
 import com.NGLP.backend.v1.repo.CourseRepo;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -64,7 +65,7 @@ public class CourseService {
     public void delete(Long id) {
         // التحقق قبل الحذف: هل الكورس يحتوي على دروس؟
         if (lessonService.existsByCourseId(id)) {
-            throw new IllegalStateException("This Course has Lessons");
+            throw new BusinessRuleException("لا يمكن حذف هذا الكورس لأنه يحتوي على دروس. احذف الدروس أولاً ثم أعد المحاولة.");
         }
         courseRepo.deleteById(id);
     }

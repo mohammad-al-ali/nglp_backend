@@ -2,6 +2,7 @@ package com.NGLP.backend.v1.controller;
 
 import com.NGLP.backend.v1.entity.Course;
 import com.NGLP.backend.v1.service.CourseService;
+import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -37,10 +38,10 @@ public class CourseController {
     public Course getById(@PathVariable Long id) { return courseService.findById(id); }
 
     @PostMapping
-    public Course create(@RequestBody Course course) { return courseService.create(course); }
+    public Course create(@Valid @RequestBody Course course) { return courseService.create(course); }
 
     @PutMapping("/{id}")
-    public Course update(@PathVariable Long id, @RequestBody Course course) { return courseService.update(id, course); }
+    public Course update(@PathVariable Long id, @Valid @RequestBody Course course) { return courseService.update(id, course); }
 
     @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Course uploadImage(@PathVariable Long id, @RequestPart("image") MultipartFile image) {

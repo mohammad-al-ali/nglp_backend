@@ -1,6 +1,7 @@
 package com.NGLP.backend.v1.service;
 
 import com.NGLP.backend.v1.entity.Category;
+import com.NGLP.backend.v1.exception.BusinessRuleException;
 import com.NGLP.backend.v1.repo.CategoryRepo;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -52,7 +53,7 @@ public class CategoryService {
         // التحقق قبل الحذف: هل يوجد أقسام فرعية تعتمد على هذا القسم؟
         List<Category> subCategories = categoryRepo.findByParentId(id);
         if (!subCategories.isEmpty()) {
-            throw new IllegalStateException("Can not delete parent category");
+            throw new BusinessRuleException("لا يمكن حذف هذا التصنيف لأنه يحتوي على تصنيفات فرعية. احذف التصنيفات الفرعية أولاً.");
         }
         categoryRepo.deleteById(id);
     }

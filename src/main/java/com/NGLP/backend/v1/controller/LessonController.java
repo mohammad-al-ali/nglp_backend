@@ -2,6 +2,7 @@ package com.NGLP.backend.v1.controller;
 
 import com.NGLP.backend.v1.entity.Lesson;
 import com.NGLP.backend.v1.service.LessonService;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,21 +26,15 @@ public class LessonController {
 
     @PostMapping(value = "/{courseId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createLessonWithVideo(
-            // 🌟 عدنا للكود النظيف: نستلم كائن Lesson مباشرة
             @PathVariable Long courseId,
-            @RequestPart("lesson") Lesson lesson,
+            @Valid @RequestPart("lesson") Lesson lesson,
             @RequestPart("file") MultipartFile file,
             @RequestPart(value = "image", required = false) MultipartFile image) {
 
         log.info("📩 طلب إنشاء درس جديد مع الفيديو: {}", lesson.getTitle());
-
-        try {
-            Lesson savedLesson = lessonService.create(courseId ,lesson, file, image);
-            return ResponseEntity.ok(savedLesson);
-        } catch (Exception e) {
-            log.error("❌ حدث خطأ أثناء الرفع: ", e);
-            return ResponseEntity.badRequest().body("حدث خطأ: " + e.getMessage());
-        }
+        // لا نبتلع الاستثناءات هنا — يتكفّل GlobalExceptionHandler بتحويلها إلى ApiError عربي موحّد.
+        Lesson savedLesson = lessonService.create(courseId, lesson, file, image);
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(savedLesson);
     }
     @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Lesson uploadImage(@PathVariable Long id, @RequestPart("image") MultipartFile image) {
@@ -47,7 +42,7 @@ public class LessonController {
     }
 
     @PutMapping("/{id}")
-    public Lesson update(@PathVariable Long id, @RequestBody Lesson lesson) { return lessonService.update(id, lesson); }
+    public Lesson update(@PathVariable Long id, @Valid @RequestBody Lesson lesson) { return lessonService.update(id, lesson); }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {

@@ -3,6 +3,7 @@ package com.NGLP.backend.v1.controller;
 import com.NGLP.backend.v1.dto.ProgressUpdateRequest;
 import com.NGLP.backend.v1.entity.Enrollment;
 import com.NGLP.backend.v1.service.EnrollmentService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,7 +27,7 @@ public class EnrollmentController {
     }
 
     @PutMapping("/{id}/progress")
-    public ResponseEntity<Enrollment> updateProgress(@PathVariable Long id, @RequestBody ProgressUpdateRequest request) {
+    public ResponseEntity<Enrollment> updateProgress(@PathVariable Long id, @Valid @RequestBody ProgressUpdateRequest request) {
         return ResponseEntity.ok(enrollmentService.updateProgress(id, request));
     }
 }

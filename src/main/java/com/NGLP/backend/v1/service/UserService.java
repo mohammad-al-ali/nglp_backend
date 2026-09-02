@@ -1,6 +1,9 @@
 package com.NGLP.backend.v1.service;
 
+import com.NGLP.backend.v1.dto.UpdateProfileRequest;
 import com.NGLP.backend.v1.entity.User;
+import com.NGLP.backend.v1.exception.DuplicateResourceException;
+import com.NGLP.backend.v1.exception.ErrorCode;
 import com.NGLP.backend.v1.repo.RoleRepo;
 import com.NGLP.backend.v1.repo.UserRepo;
 import jakarta.persistence.EntityNotFoundException;
@@ -32,7 +35,7 @@ public class UserService {
     public User create(User user) {
         // 1. التحقق من أن الإيميل غير مستخدم مسبقاً
         if (userRepo.existsByEmail(user.getEmail())) {
-            throw new IllegalArgumentException("هذا البريد الإلكتروني مستخدم بالفعل.");
+            throw new DuplicateResourceException("هذا البريد الإلكتروني مستخدم بالفعل.", ErrorCode.DUPLICATE_EMAIL);
         }
 
         if (user.getRole() != null && user.getRole().getId() != null) {
@@ -66,24 +69,26 @@ public class UserService {
         return user;
     }
 
-    // دالة تحديث الملف الشخصي (آمنة: لا تسمح بتغيير الدور أو الباسورد هنا)
-    public User updateProfile(Long id, User updatedUser) {
+    // دالة تحديث الملف الشخصي (آمنة: لا تسمح بتغيير الدور أو حالة الحظر هنا)
+    public User updateProfile(Long id, UpdateProfileRequest request) {
         return userRepo.findById(id).map(existing -> {
 
+            String newEmail = request.email() != null ? request.email().trim().toLowerCase() : null;
+
             // إذا أراد تغيير الإيميل، يجب التأكد أن الإيميل الجديد غير مأخوذ
-            if (!existing.getEmail().equals(updatedUser.getEmail()) && userRepo.existsByEmail(updatedUser.getEmail())) {
-                throw new IllegalArgumentException("البريد الإلكتروني الجديد مستخدم بالفعل.");
+            if (newEmail != null && !newEmail.equalsIgnoreCase(existing.getEmail()) && userRepo.existsByEmail(newEmail)) {
+                throw new DuplicateResourceException("البريد الإلكتروني الجديد مستخدم بالفعل.", ErrorCode.DUPLICATE_EMAIL);
             }
 
-            existing.setFullName(updatedUser.getFullName());
-            existing.setEmail(updatedUser.getEmail());
+            existing.setFullName(request.fullName().trim());
+            existing.setEmail(newEmail);
 
-            if (updatedUser.getPassword() != null && !updatedUser.getPassword().isBlank()) {
-                existing.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
+            if (request.password() != null && !request.password().isBlank()) {
+                existing.setPassword(passwordEncoder.encode(request.password()));
             }
 
             return userRepo.save(existing);
-        }).orElseThrow(() -> new EntityNotFoundException("Usernot found with this"+ id));
+        }).orElseThrow(() -> new EntityNotFoundException("User not found with id " + id));
     }
 
     public User updateAdminFields(Long id, User updatedUser) {

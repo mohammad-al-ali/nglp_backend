@@ -3,6 +3,7 @@ package com.NGLP.backend.v1.controller;
 import com.NGLP.backend.v1.dto.*;
 import com.NGLP.backend.v1.entity.QuizAttempt;
 import com.NGLP.backend.v1.service.QuizService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +21,7 @@ public class QuizController {
     private final QuizService quizService;
 
     @PostMapping("/generate")
-    public ResponseEntity<?> generateQuiz(@RequestBody QuizGenerateRequest request) {
+    public ResponseEntity<?> generateQuiz(@Valid @RequestBody QuizGenerateRequest request) {
         log.info("📝 توليد كويز: lessonId={}, title='{}', أسئلة={}", request.lessonId(), request.title(), request.numberOfQuestions());
         QuizResponse response = quizService.generateQuiz(request);
         log.info("✅ تم توليد الكويز ID={} بعنوان '{}'", response.id(), response.title());
@@ -48,13 +49,13 @@ public class QuizController {
     }
 
     @PutMapping("/{id}/questions/{questionId}")
-    public ResponseEntity<?> updateQuestion(@PathVariable Long id, @PathVariable Long questionId, @RequestBody QuizQuestionRequest request) {
+    public ResponseEntity<?> updateQuestion(@PathVariable Long id, @PathVariable Long questionId, @Valid @RequestBody QuizQuestionRequest request) {
         log.info("✏️ تعديل سؤال: quizId={}, questionId={}", id, questionId);
         return ResponseEntity.ok(quizService.updateQuestion(id, questionId, request));
     }
 
     @PostMapping("/{id}/questions")
-    public ResponseEntity<?> addQuestion(@PathVariable Long id, @RequestBody QuizQuestionRequest request) {
+    public ResponseEntity<?> addQuestion(@PathVariable Long id, @Valid @RequestBody QuizQuestionRequest request) {
         log.info("➕ إضافة سؤال يدوي للكويز: quizId={}", id);
         return ResponseEntity.ok(quizService.addQuestion(id, request));
     }
@@ -90,7 +91,7 @@ public class QuizController {
     }
 
     @PostMapping("/attempts/{attemptId}/submit")
-    public ResponseEntity<?> submitAttempt(@PathVariable Long attemptId, @RequestBody QuizSubmitRequest request) {
+    public ResponseEntity<?> submitAttempt(@PathVariable Long attemptId, @Valid @RequestBody QuizSubmitRequest request) {
         log.info("📥 تسليم المحاولة: attemptId={}, إجابات={}", attemptId, request.answers() != null ? request.answers().size() : 0);
         QuizAttemptResponse response = quizService.submitAttempt(attemptId, request);
         log.info("✅ تم تسليم المحاولة {}: النتيجة {}", attemptId, response.score());

@@ -8,6 +8,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Table;
 import lombok.*;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -24,6 +26,8 @@ public class Category {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "{nglp.category.name.required}")
+    @Size(min = 2, max = 80, message = "{nglp.category.name.size}")
     private String name;
 
     private String imageUrl;

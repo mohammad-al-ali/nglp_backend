@@ -1,7 +1,9 @@
 package com.NGLP.backend.v1.controller;
 
+import com.NGLP.backend.v1.dto.UpdateProfileRequest;
 import com.NGLP.backend.v1.entity.User;
 import com.NGLP.backend.v1.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -45,8 +47,8 @@ public class UserController {
      * تحديث الملف الشخصي العادي (الاسم والإيميل فقط)
      */
     @PutMapping("/{id}")
-    public ResponseEntity<User> updateProfile(@PathVariable Long id, @RequestBody User user) {
-        return ResponseEntity.ok(userService.updateProfile(id, user));
+    public ResponseEntity<User> updateProfile(@PathVariable Long id, @Valid @RequestBody UpdateProfileRequest request) {
+        return ResponseEntity.ok(userService.updateProfile(id, request));
     }
 
     /**

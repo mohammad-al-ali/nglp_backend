@@ -1,6 +1,8 @@
 package com.NGLP.backend.v1.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import java.util.List;
 @Entity
@@ -14,7 +16,10 @@ public class Course {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @NotBlank(message = "{nglp.course.title.required}")
+    @Size(min = 3, max = 150, message = "{nglp.course.title.size}")
     private String title;
+    @Size(max = 5000, message = "{nglp.course.description.size}")
     @Column(columnDefinition = "TEXT")
     private String description;
     private String imageUrl;

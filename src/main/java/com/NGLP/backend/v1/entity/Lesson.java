@@ -2,6 +2,9 @@ package com.NGLP.backend.v1.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.util.List;
@@ -17,11 +20,15 @@ public class Lesson {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @NotBlank(message = "{nglp.lesson.title.required}")
+    @Size(min = 3, max = 150, message = "{nglp.lesson.title.size}")
     private String title;
+    @Size(max = 5000, message = "{nglp.lesson.description.size}")
     @Column(columnDefinition = "TEXT")
     private String description;
     private String videoUrl;
     private String imageUrl;
+    @PositiveOrZero(message = "{nglp.lesson.duration.positive}")
     private Integer durationSeconds;
 
     @ManyToOne

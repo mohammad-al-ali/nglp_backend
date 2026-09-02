@@ -2,6 +2,7 @@ package com.NGLP.backend.v1.controller;
 
 import com.NGLP.backend.v1.entity.Category;
 import com.NGLP.backend.v1.service.CategoryService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -52,7 +53,7 @@ public class CategoryController {
      */
     @PostMapping
     public ResponseEntity<Category> create(
-            @RequestBody Category category,
+            @Valid @RequestBody Category category,
             @RequestHeader(value = "X-User-Role", required = false) String userRole) {
         validateAdminAccess(userRole);
         Category created = categoryService.create(category);
@@ -77,7 +78,7 @@ public class CategoryController {
     @PutMapping("/{id}")
     public ResponseEntity<Category> update(
             @PathVariable Long id,
-            @RequestBody Category category,
+            @Valid @RequestBody Category category,
             @RequestHeader(value = "X-User-Role", required = false) String userRole
     ) {
         validateAdminAccess(userRole);
