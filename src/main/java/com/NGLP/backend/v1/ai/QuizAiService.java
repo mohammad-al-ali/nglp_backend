@@ -63,12 +63,21 @@ public class QuizAiService {
             Return the response as a JSON object with a "questions" array.
             """.formatted(transcriptText, numberOfQuestions);
 
-        ChatClient chatClient = routerService.createBuilder(userId).build();
+        LlmProvider provider = routerService.resolveProvider(userId);
+        ChatClient chatClient = provider.createChatClientBuilder().build();
 
         try {
-            AiQuizResponse response = chatClient.prompt()
+            ChatClient.ChatClientRequestSpec requestSpec = chatClient.prompt()
                 .system(systemPrompt)
-                .user(userPrompt)
+                .user(userPrompt);
+
+            // بعض المزوّدين (Groq/gpt-oss) يحتاجون فرض صيغة JSON صراحةً وإلا قد يجيبون بنص عادي.
+            var structuredOptions = provider.structuredOutputOptions();
+            if (structuredOptions != null) {
+                requestSpec = requestSpec.options(structuredOptions);
+            }
+
+            AiQuizResponse response = requestSpec
                 .call()
                 .entity(AiQuizResponse.class);
 

@@ -1,8 +1,8 @@
 package com.NGLP.backend.v1.service;
 
+import com.NGLP.backend.v1.dto.ChatMessageView;
 import com.NGLP.backend.v1.entity.Conversation;
 import com.NGLP.backend.v1.entity.Lesson;
-import com.NGLP.backend.v1.entity.Msg;
 import com.NGLP.backend.v1.entity.User;
 import com.NGLP.backend.v1.repo.ConversationRepo;
 import com.NGLP.backend.v1.repo.MsgRepo;
@@ -37,10 +37,15 @@ public class ConversationService {
     }
 
     /**
-     * دالة مخصصة للـ Frontend (React) لعرض كامل السجل المرتب زمنياً للطالب
+     * كامل سجل المحادثة مرتّباً زمنياً وجاهزاً للعرض في الواجهة الأمامية.
+     * كل رسالة تُنظّف عبر {@link ChatMessageView} فلا يرى الطالب أي سياق تقني
+     * محقون أو وسوم داخلية في الرسائل القديمة.
      */
-    public List<Msg> getFullChatHistory(Long conversationId) {
-        return msgRepo.findByConversationIdOrderBySentAtAsc(conversationId);
+    public List<ChatMessageView> getFullChatHistory(Long conversationId) {
+        return msgRepo.findByConversationIdOrderBySentAtAsc(conversationId).stream()
+                .map(ChatMessageView::from)
+                .filter(m -> m.content() != null && !m.content().isBlank())
+                .toList();
     }
 
     @Transactional

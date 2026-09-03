@@ -1,7 +1,7 @@
 package com.NGLP.backend.v1.controller;
 
+import com.NGLP.backend.v1.dto.ChatMessageView;
 import com.NGLP.backend.v1.entity.Conversation;
-import com.NGLP.backend.v1.entity.Msg;
 import com.NGLP.backend.v1.service.ConversationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -40,9 +40,9 @@ public class ConversationController {
      * GET /api/v1/conversations/{id}/messages
      */
     @GetMapping("/{id}/messages")
-    public ResponseEntity<List<Msg>> getConversationMessages(@PathVariable Long id) {
+    public ResponseEntity<List<ChatMessageView>> getConversationMessages(@PathVariable Long id) {
         log.info("🔍 Fetching message history for Conversation ID: {}", id);
-        List<Msg> history = conversationService.getFullChatHistory(id);
+        List<ChatMessageView> history = conversationService.getFullChatHistory(id);
         return ResponseEntity.ok(history);
     }
 
@@ -57,8 +57,8 @@ public class ConversationController {
             @RequestParam Long lessonId) {
         log.info("🔍 Fetching full chat history for User: {}, Lesson: {}", userId, lessonId);
         Conversation conversation = conversationService.getOrCreateConversation(userId, lessonId);
-        List<Msg> messages = conversationService.getFullChatHistory(conversation.getId());
-        
+        List<ChatMessageView> messages = conversationService.getFullChatHistory(conversation.getId());
+
         return ResponseEntity.ok(java.util.Map.of(
             "conversationId", conversation.getId(),
             "messages", messages
