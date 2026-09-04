@@ -103,6 +103,10 @@ public class LessonTranscriptService {
             log.info("🎉 تم حفظ {} مقطعاً نصياً للدرس رقم: {} (لغة المصدر: {})",
                     toSave.size(), lesson.getId(), originalLang.code());
 
+            // مدة الفيديو: تصل الآن من خدمة التفريغ ضمن الحقل "duration". إن غابت، نستعمل
+            // أكبر endSecond في المقاطع كتقدير أدنى قريب. نُحدّث الدرس فقط إن كانت المدة مجهولة.
+            persistLessonDuration(lesson.getId(), rootNode.path("duration"), toSave);
+
             // احتياط: إن كان المصدر غير عربي ولم تصل ترجمة من الخدمة، جرّب إنشاءها الآن.
             if (originalLang != TranscriptLanguage.AR
                     && !transcriptRepo.existsByLessonIdAndLanguage(lesson.getId(), TranscriptLanguage.AR)) {
@@ -138,6 +142,37 @@ public class LessonTranscriptService {
                     .build());
         }
         return list;
+    }
+
+    /**
+     * يحفظ مدة الفيديو في {@code lesson.durationSeconds} إن كانت مجهولة (null أو ≤ 0).
+     * المصدر الأول: الحقل "duration" من خدمة التفريغ (Whisper يحسبها فعلياً).
+     * الاحتياط: أكبر {@code endSecond} في المقاطع المُفرَّغة.
+     * نُعيد جلب الدرس داخل خيط @Async لتفادي الكيان المنفصل / ترتيب المعاملات.
+     */
+    private void persistLessonDuration(Long lessonId, JsonNode durationNode, List<LessonTranscript> segments) {
+        int seconds = 0;
+        if (durationNode != null && durationNode.isNumber()) {
+            seconds = (int) Math.round(durationNode.asDouble());
+        }
+        if (seconds <= 0) {
+            for (LessonTranscript seg : segments) {
+                if (seg.getEndSecond() != null && seg.getEndSecond() > seconds) {
+                    seconds = seg.getEndSecond();
+                }
+            }
+        }
+        if (seconds <= 0) return;
+
+        final int resolved = seconds;
+        lessonRepo.findById(lessonId).ifPresent(fresh -> {
+            Integer current = fresh.getDurationSeconds();
+            if (current == null || current <= 0) {
+                fresh.setDurationSeconds(resolved);
+                lessonRepo.save(fresh);
+                log.info("⏱️ تم ضبط مدة الدرس رقم {} على {} ثانية.", lessonId, resolved);
+            }
+        });
     }
 
     // =====================================================================

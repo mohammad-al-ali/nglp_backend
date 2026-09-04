@@ -6,6 +6,7 @@ import com.NGLP.backend.v1.exception.BusinessRuleException;
 import com.NGLP.backend.v1.exception.ErrorCode;
 import com.NGLP.backend.v1.repo.CourseRepo;
 import com.NGLP.backend.v1.repo.LessonRepo;
+import com.NGLP.backend.v1.repo.LessonTranscriptRepo;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -22,11 +23,26 @@ public class LessonService {
     private final LessonRepo lessonRepo;
     private final CourseRepo courseRepo;
     private final LessonTranscriptService transcriptionService;
+    private final LessonTranscriptRepo lessonTranscriptRepo;
     private final FileStorageService fileStorageService;
 
     // 1. تم استبدال findAll لنجلب الدروس بناءً على الكورس
+    @Transactional
     public List<Lesson> findLessonsByCourse(Long courseId) {
-        return lessonRepo.findByCourseId(courseId);
+        List<Lesson> lessons = lessonRepo.findByCourseId(courseId);
+        // backfill لمرة واحدة: املأ مدّة الدروس المجهولة من أكبر endSecond في تفريغها
+        // (الدروس التي رُفعت قبل استخراج المدة تلقائياً). يُتخطّى فوراً بعد أول تعبئة.
+        for (Lesson lesson : lessons) {
+            Integer current = lesson.getDurationSeconds();
+            if (current == null || current <= 0) {
+                Integer maxEnd = lessonTranscriptRepo.findMaxEndSecondByLessonId(lesson.getId());
+                if (maxEnd != null && maxEnd > 0) {
+                    lesson.setDurationSeconds(maxEnd);
+                    lessonRepo.save(lesson);
+                }
+            }
+        }
+        return lessons;
     }
 
     public Lesson findById(Long id) {
@@ -85,6 +101,22 @@ public class LessonService {
         String absolutePath = Paths.get("uploads/videos/", fileName).toAbsolutePath().toString();
         // نداء عبر bean آخر → وكيل @Async يعمل (لا self-invocation).
         transcriptionService.extractAndSaveTranscript(lesson, absolutePath);
+    }
+
+    /**
+     * self-heal لمدة الدرس: تضبط {@code durationSeconds} فقط إن كانت مجهولة (null أو ≤ 0).
+     * تُستدعى من الواجهة عندما يقرأ المشغّل مدة فيديو درس قديم. idempotent وآمنة للطلاب:
+     * لا يمكن استخدامها للكتابة فوق مدة معروفة.
+     */
+    @Transactional
+    public Lesson setDurationIfMissing(Long id, int seconds) {
+        Lesson lesson = findById(id);
+        Integer current = lesson.getDurationSeconds();
+        if ((current == null || current <= 0) && seconds > 0) {
+            lesson.setDurationSeconds(seconds);
+            return lessonRepo.save(lesson);
+        }
+        return lesson;
     }
 
     public Lesson uploadImage(Long id, MultipartFile image) {

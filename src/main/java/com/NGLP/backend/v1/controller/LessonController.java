@@ -1,5 +1,6 @@
 package com.NGLP.backend.v1.controller;
 
+import com.NGLP.backend.v1.dto.LessonDurationRequest;
 import com.NGLP.backend.v1.dto.LessonTranscriptResponse;
 import com.NGLP.backend.v1.entity.Lesson;
 import com.NGLP.backend.v1.entity.TranscriptLanguage;
@@ -101,6 +102,15 @@ public class LessonController {
 
     @PutMapping("/{id}")
     public Lesson update(@PathVariable Long id, @Valid @RequestBody Lesson lesson) { return lessonService.update(id, lesson); }
+
+    /**
+     * self-heal لمدة الدرس: تُطبَّق فقط إن كانت المدة الحالية مجهولة. POST (لا PATCH)
+     * لأن إعداد CORS لا يسمح بـ PATCH، وبنفس نمط {@code POST /{id}/image}.
+     */
+    @PostMapping("/{id}/duration")
+    public Lesson setDuration(@PathVariable Long id, @Valid @RequestBody LessonDurationRequest body) {
+        return lessonService.setDurationIfMissing(id, body.durationSeconds());
+    }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {

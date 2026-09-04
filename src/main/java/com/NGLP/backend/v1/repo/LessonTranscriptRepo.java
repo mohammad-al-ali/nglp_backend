@@ -33,6 +33,10 @@ public interface LessonTranscriptRepo extends JpaRepository<LessonTranscript, Lo
 
     boolean existsByLessonIdAndLanguage(Long lessonId, TranscriptLanguage language);
 
+    /** أكبر ثانية نهاية بين كل مقاطع الدرس ≈ طول الفيديو — يُستخدم كـ backfill لمدّة الدرس. */
+    @Query("SELECT MAX(lt.endSecond) FROM LessonTranscript lt WHERE lt.lesson.id = :lessonId")
+    Integer findMaxEndSecondByLessonId(@Param("lessonId") Long lessonId);
+
     /** الصفوف القديمة التي لا لغة لها — تُملأ مرة واحدة عند الإقلاع. */
     List<LessonTranscript> findByLanguageIsNull();
 }
