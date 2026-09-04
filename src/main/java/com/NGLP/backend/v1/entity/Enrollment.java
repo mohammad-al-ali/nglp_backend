@@ -2,6 +2,9 @@ package com.NGLP.backend.v1.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "enrollments", uniqueConstraints = {
@@ -30,4 +33,11 @@ public class Enrollment {
     @ManyToOne
     @JoinColumn(name = "last_watched_lesson_id")
     private Lesson lastWatchedLesson;
+
+    @CreationTimestamp
+    @Column(updatable = false)
+    private LocalDateTime enrolledAt;
+
+    /** آخر نشاط تعلّم (إكمال درس / تغيير آخر درس مُشاهَد) — لترتيب "استئناف التعلم". */
+    private LocalDateTime lastActivityAt;
 }

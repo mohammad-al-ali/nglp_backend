@@ -1,11 +1,14 @@
 package com.NGLP.backend.v1.controller;
 
+import com.NGLP.backend.v1.dto.LessonCompletionRequest;
 import com.NGLP.backend.v1.dto.LessonDurationRequest;
 import com.NGLP.backend.v1.dto.LessonTranscriptResponse;
+import com.NGLP.backend.v1.entity.Enrollment;
 import com.NGLP.backend.v1.entity.Lesson;
 import com.NGLP.backend.v1.entity.TranscriptLanguage;
 import com.NGLP.backend.v1.exception.BusinessRuleException;
 import com.NGLP.backend.v1.exception.ErrorCode;
+import com.NGLP.backend.v1.service.LessonProgressService;
 import com.NGLP.backend.v1.service.LessonService;
 import com.NGLP.backend.v1.service.LessonTranscriptService;
 import jakarta.validation.Valid;
@@ -17,16 +20,20 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/lessons")
 public class LessonController {
     private final LessonService lessonService;
     private final LessonTranscriptService lessonTranscriptService;
+    private final LessonProgressService lessonProgressService;
 
-    public LessonController(LessonService lessonService, LessonTranscriptService lessonTranscriptService) {
+    public LessonController(LessonService lessonService, LessonTranscriptService lessonTranscriptService,
+                            LessonProgressService lessonProgressService) {
         this.lessonService = lessonService;
         this.lessonTranscriptService = lessonTranscriptService;
+        this.lessonProgressService = lessonProgressService;
     }
 
     @GetMapping
@@ -110,6 +117,26 @@ public class LessonController {
     @PostMapping("/{id}/duration")
     public Lesson setDuration(@PathVariable Long id, @Valid @RequestBody LessonDurationRequest body) {
         return lessonService.setDurationIfMissing(id, body.durationSeconds());
+    }
+
+    /**
+     * تعليم/إلغاء تعليم درس كمكتمل للطالب. يعيد التسجيل بعد إعادة حساب نسبة التقدّم.
+     * POST (لا PATCH) لأن إعداد CORS لا يسمح بـ PATCH. غياب الجسم = "مكتمل".
+     */
+    @PostMapping("/{lessonId}/complete")
+    public ResponseEntity<Enrollment> setCompletion(
+            @PathVariable Long lessonId,
+            @RequestParam Long userId,
+            @RequestBody(required = false) LessonCompletionRequest body) {
+        boolean completed = body == null || body.completed() == null || body.completed();
+        return ResponseEntity.ok(lessonProgressService.setCompletion(userId, lessonId, completed));
+    }
+
+    /** معرّفات الدروس المكتملة للطالب في كورس محدّد — تستخدمها قائمة غرفة الدراسة. */
+    @GetMapping("/progress")
+    public ResponseEntity<Map<String, Object>> progress(@RequestParam Long userId, @RequestParam Long courseId) {
+        return ResponseEntity.ok(Map.of("completedLessonIds",
+                lessonProgressService.completedLessonIds(userId, courseId)));
     }
 
     @DeleteMapping("/{id}")

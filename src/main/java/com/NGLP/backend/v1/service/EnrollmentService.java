@@ -7,12 +7,15 @@ import com.NGLP.backend.v1.entity.Lesson;
 import com.NGLP.backend.v1.entity.User;
 import com.NGLP.backend.v1.repo.CourseRepo;
 import com.NGLP.backend.v1.repo.EnrollmentRepo;
+import com.NGLP.backend.v1.repo.LessonProgressRepo;
 import com.NGLP.backend.v1.repo.LessonRepo;
 import com.NGLP.backend.v1.repo.UserRepo;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -22,6 +25,7 @@ public class EnrollmentService {
     private final UserRepo userRepo;
     private final CourseRepo courseRepo;
     private final LessonRepo lessonRepo;
+    private final LessonProgressRepo lessonProgressRepo;
 
     public List<Enrollment> findByUser(Long userId) {
         return enrollmentRepo.findByUserId(userId);
@@ -56,8 +60,22 @@ public class EnrollmentService {
             Lesson lesson = lessonRepo.findById(request.lastWatchedLessonId())
                     .orElseThrow(() -> new EntityNotFoundException("Lesson not found with id " + request.lastWatchedLessonId()));
             enrollment.setLastWatchedLesson(lesson);
+            enrollment.setLastActivityAt(LocalDateTime.now());
         }
 
+        return enrollmentRepo.save(enrollment);
+    }
+
+    /**
+     * يعيد حساب نسبة تقدّم الكورس = الدروس المكتملة ÷ إجمالي دروس الكورس.
+     * يُستدعى من {@code LessonProgressService} بعد كل تغيير على حالة الإكمال.
+     */
+    @Transactional
+    public Enrollment recomputeProgress(Enrollment enrollment) {
+        long total = lessonRepo.countByCourseId(enrollment.getCourse().getId());
+        long done = lessonProgressRepo.countByEnrollmentIdAndCompletedTrue(enrollment.getId());
+        int percent = total == 0 ? 0 : (int) Math.min(100, Math.round(done * 100.0 / total));
+        enrollment.setProgressPercentage(percent);
         return enrollmentRepo.save(enrollment);
     }
 }

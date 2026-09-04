@@ -4,7 +4,7 @@ import com.NGLP.backend.v1.entity.User;
 import com.NGLP.backend.v1.exception.ApiError;
 import com.NGLP.backend.v1.exception.ErrorCode;
 import com.NGLP.backend.v1.repo.UserRepo;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;

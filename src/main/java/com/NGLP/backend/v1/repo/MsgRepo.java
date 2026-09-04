@@ -21,4 +21,8 @@ public interface MsgRepo extends JpaRepository<Msg, Long> {
     List<Msg> findByConversationIdOrderBySentAtAsc(Long conversationId);
 
     Optional<Msg> findFirstByConversationIdOrderBySentAtDesc(Long id);
+
+    /** عدد أسئلة الطالب للمساعد الذكي عبر كل الدروس. */
+    @Query("SELECT COUNT(m) FROM Msg m WHERE m.conversation.user.id = :userId AND m.senderType = 'USER'")
+    long countUserMessagesByUser(@Param("userId") Long userId);
 }

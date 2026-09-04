@@ -280,13 +280,16 @@ public class QuizService {
             totalScore += pointsAwarded;
         }
 
+        int maxScore = calculateMaxScore(quiz);
+
         attempt.getAnswers().addAll(answerEntities);
         answerRepo.saveAll(answerEntities);
         attempt.setScore(totalScore);
+        attempt.setMaxScore(maxScore);
+        attempt.setScorePercentage(maxScore == 0 ? 0 : (int) Math.round(totalScore * 100.0 / maxScore));
         attempt.setSubmittedAt(LocalDateTime.now());
         QuizAttempt savedAttempt = attemptRepo.save(attempt);
 
-        int maxScore = calculateMaxScore(quiz);
         log.info("✅ تم تسليم المحاولة {}: النتيجة {}/{}", attemptId, totalScore, maxScore);
 
         return toAttemptResponse(savedAttempt, quiz.getShowAnswersAfterSubmit());

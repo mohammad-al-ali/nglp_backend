@@ -35,6 +35,12 @@ public class QuizAttempt {
 
     private Integer score;
 
+    /** أقصى نقاط ممكنة للكويز وقت التسليم (مجموع difficultyWeight). */
+    private Integer maxScore;
+
+    /** النتيجة كنسبة مئوية 0-100 — للإحصاءات في لوحة الطالب. */
+    private Integer scorePercentage;
+
     @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<QuizAnswer> answers = new ArrayList<>();
