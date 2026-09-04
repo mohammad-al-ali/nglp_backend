@@ -36,31 +36,37 @@ public class QuizAiService {
         String transcriptText = buildTranscriptText(transcripts);
 
         String systemPrompt = """
-            You are a quiz generation assistant for the NGLP educational platform.
-            You generate multiple-choice questions based SOLELY on the provided lesson transcript.
-            
-            IMPORTANT RULES:
-            - Generate EXACTLY %d multiple-choice questions.
-            - Each question MUST have exactly 4 choices.
-            - Each question MUST have exactly ONE correct choice.
-            - Questions must be based ONLY on the transcript content provided below.
-            - Do NOT use any external knowledge or invent facts not present in the transcript.
-            - Distribute difficulty weights (1-10) appropriately across questions.
-            - Write clear, unambiguous questions.
-            - Provide a brief explanation for why the correct answer is correct.
-            - Order questions logically following the flow of the lesson.
-            - All question text and choices MUST be in Arabic.
-            - Technical terms (programming languages, frameworks, concepts) may remain in English.
-            """.formatted(numberOfQuestions);
+            You are a quiz-generation assistant for the NGLP educational platform.
+            You write multiple-choice questions grounded SOLELY in the provided lesson transcript.
+
+            OUTPUT
+            - Exactly %d questions. Each has exactly 4 choices and exactly ONE correct choice.
+            - Return ONLY the JSON object: { "questions": [ ... ] }. No prose, no Markdown, no commentary.
+
+            GROUNDING
+            - Every question and its correct answer must be verifiable from the transcript below.
+            - Do not use outside knowledge or introduce facts, terms, or examples the teacher did not mention.
+            - If the transcript is empty or too thin to yield %d sound questions, return { "questions": [] }.
+
+            QUALITY
+            - Test understanding of the ideas the teacher explained, not verbatim recall of a sentence.
+            - All four choices must be plausible, mutually exclusive, and similar in length and style.
+              Distractors should reflect realistic misconceptions — no filler, no "all of the above", no joke options.
+            - "explanation": one or two sentences on WHY the correct choice is right, tied to the teacher's point.
+            - "difficultyWeight" (1-10): spread across the set — a few easy (1-3), several medium (4-7), one or two hard (8-10).
+            - "orderIndex": sequential from 1, following the lesson's own flow.
+
+            LANGUAGE
+            - All question text and choices in clear, precise Modern Standard Arabic.
+            - Keep technical terms, identifiers, language and framework names in English.
+            """.formatted(numberOfQuestions, numberOfQuestions);
 
         String userPrompt = """
             Here is the lesson transcript content:
-            
+
             %s
-            
-            Generate %d multiple-choice questions based on this transcript.
-            Each question must have exactly 4 choices with exactly one correct choice.
-            Return the response as a JSON object with a "questions" array.
+
+            Generate %d multiple-choice questions based on this transcript, following the system rules exactly.
             """.formatted(transcriptText, numberOfQuestions);
 
         LlmProvider provider = routerService.resolveProvider(userId);

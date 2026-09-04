@@ -4,10 +4,9 @@ import com.NGLP.backend.v1.config.LlmModelsConfig;
 import com.NGLP.backend.v1.entity.UserAiPreference;
 import com.NGLP.backend.v1.repo.UserAiPreferenceRepo;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -36,30 +35,46 @@ public class LlmRouterService {
     }
 
     public LlmProvider resolveProvider(Long userId) {
+        return resolveProviderChain(userId).get(0);
+    }
+
+    /**
+     * يبني ترتيب محاولة المزوّدين لمستخدم معيّن: التفضيل المحفوظ (إن وُجد) فالمزوّد
+     * الافتراضي فبقية المزوّدين — بحيث يُقدَّم كل مزوّد سليم فعلياً ({@link LlmProvider#isHealthy()})
+     * على أي مزوّد معطوب في آخر فحص، دون استبعاد المعطوب كلياً (آخر ملاذ قبل الفشل التام).
+     * تستخدمها {@code NglpAiAgent} لتجربة كل مزوّد بالترتيب حتى ينجح أحدها، بدل إرجاع خطأ
+     * عام للطالب لمجرد تعطّل المزوّد الأول. تُرمى استثناء فقط إن لم يكن أي مزوّد مفعّلاً أصلاً.
+     */
+    public List<LlmProvider> resolveProviderChain(Long userId) {
+        LinkedHashSet<LlmProvider> chain = new LinkedHashSet<>();
+
         UserAiPreference pref = preferenceRepo.findByUserId(userId).orElse(null);
-        if (pref != null) {
-            LlmProvider provider = providerMap.get(pref.getProviderKey());
-            if (provider != null && provider.isEnabled()) {
-                return provider;
-            }
-        }
-
-        // بدون تفضيل محفوظ (أو مزوّده لم يعد متاحاً): نستخدم المزوّد الافتراضي
-        // المحدد صراحة بدل الاعتماد على ترتيب حقن Spring لقائمة LlmProvider، وهو
-        // غير مضمون ولا يجب أن يقرر أي مزوّد يُستهلك أولاً.
+        LlmProvider preferred = pref != null ? providerMap.get(pref.getProviderKey()) : null;
         LlmProvider defaultProvider = providerMap.get(defaultProviderKey);
-        if (defaultProvider != null && defaultProvider.isEnabled()) {
-            log.info("User {} has no usable AI preference, using default provider {}", userId, defaultProviderKey);
-            return defaultProvider;
-        }
 
-        LlmProvider fallback = providers.stream()
-                .filter(LlmProvider::isEnabled)
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("لا يوجد مزود LLM مفعّل حالياً"));
-        log.info("User {} has no AI preference and default provider {} is unavailable, falling back to {}",
-                userId, defaultProviderKey, fallback.getProviderKey());
-        return fallback;
+        // الجولة الأولى: كل مزوّد سليم فعلياً الآن، مرتّب حسب الأفضلية.
+        if (usable(preferred)) chain.add(preferred);
+        if (usable(defaultProvider)) chain.add(defaultProvider);
+        providers.stream().filter(this::usable).forEach(chain::add);
+
+        // الجولة الثانية (آخر ملاذ): أي مزوّد مفعّل حتى لو ظهر معطوباً في آخر فحص دوري —
+        // فشل الفحص الدوري لا يعني بالضرورة فشلاً فعلياً الآن.
+        if (preferred != null && preferred.isEnabled()) chain.add(preferred);
+        if (defaultProvider != null && defaultProvider.isEnabled()) chain.add(defaultProvider);
+        providers.stream().filter(LlmProvider::isEnabled).forEach(chain::add);
+
+        if (chain.isEmpty()) {
+            throw new RuntimeException("لا يوجد مزود LLM مفعّل حالياً");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("User {} provider chain: {}", userId,
+                    chain.stream().map(LlmProvider::getProviderKey).collect(Collectors.joining(" -> ")));
+        }
+        return List.copyOf(chain);
+    }
+
+    private boolean usable(LlmProvider provider) {
+        return provider != null && provider.isEnabled() && provider.isHealthy();
     }
 
     public List<ProviderDto> getAvailableProviders() {
@@ -97,11 +112,6 @@ public class LlmRouterService {
         pref.setModelKey(modelKey);
         pref.setUpdatedAt(java.time.LocalDateTime.now());
         return preferenceRepo.save(pref);
-    }
-
-    public ChatClient.Builder createBuilder(Long userId) {
-        LlmProvider provider = resolveProvider(userId);
-        return provider.createChatClientBuilder();
     }
 
     public record ProviderDto(String key, List<ModelDto> models) {

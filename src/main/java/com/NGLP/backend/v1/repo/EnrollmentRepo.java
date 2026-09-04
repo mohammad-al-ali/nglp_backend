@@ -11,6 +11,7 @@ import java.util.Optional;
 public interface EnrollmentRepo extends JpaRepository<Enrollment, Long> {
     List<Enrollment> findByUserId(Long userId);
     Optional<Enrollment> findByUserIdAndCourseId(Long userId, Long courseId);
+    boolean existsByCourseId(Long courseId);
 
     /** تسجيلات الطالب مع الكورس/التصنيف/آخر درس مُشاهَد مُحمَّلة مسبقاً (لتفادي LazyInitialization في اللوحة). */
     @Query("SELECT e FROM Enrollment e JOIN FETCH e.course c LEFT JOIN FETCH c.category " +

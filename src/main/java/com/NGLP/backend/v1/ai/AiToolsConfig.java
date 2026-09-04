@@ -21,7 +21,9 @@ public class AiToolsConfig {
 
     public record TranscriptResponse(String context, boolean found) {}
 
-    @Tool(name = "fetchLessonTranscript", description = "Fetches the exact transcript spoken by the teacher in the video at a specific timestamp.")
+    @Tool(name = "fetchLessonTranscript", description = "Fetches the teacher's spoken transcript at a given video timestamp (seconds). "
+            + "Use only when the lesson context you were already given is missing or too thin, or the student "
+            + "asks about a different moment in the video than the one they paused at.")
     public TranscriptResponse fetchLessonTranscript(
             @ToolParam(description = "The unique ID of the lesson as a string.") String lessonId,
             @ToolParam(description = "The video timestamp formatted as a String (e.g., '100').") String timestamp

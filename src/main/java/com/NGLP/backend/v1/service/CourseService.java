@@ -3,6 +3,7 @@ package com.NGLP.backend.v1.service;
 import com.NGLP.backend.v1.entity.Course;
 import com.NGLP.backend.v1.exception.BusinessRuleException;
 import com.NGLP.backend.v1.repo.CourseRepo;
+import com.NGLP.backend.v1.repo.EnrollmentRepo;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import java.util.List;
 public class CourseService {
     private final CourseRepo courseRepo;
     private final LessonService lessonService; // حقن للتحقق من الدروس قبل الحذف
+    private final EnrollmentRepo enrollmentRepo; // حقن للتحقق من تسجيلات الطلاب قبل الحذف
     private final FileStorageService fileStorageService;
 
     // 1. يمكننا الإبقاء على findAll للوحة تحكم الإدارة (Admin Dashboard)
@@ -66,6 +68,10 @@ public class CourseService {
         // التحقق قبل الحذف: هل الكورس يحتوي على دروس؟
         if (lessonService.existsByCourseId(id)) {
             throw new BusinessRuleException("لا يمكن حذف هذا الكورس لأنه يحتوي على دروس. احذف الدروس أولاً ثم أعد المحاولة.");
+        }
+        // التحقق: هل يوجد طلاب مسجّلون في هذا الكورس؟ (كورس بلا دروس قد يكون له تسجيلات)
+        if (enrollmentRepo.existsByCourseId(id)) {
+            throw new BusinessRuleException("لا يمكن حذف هذا الكورس لأن هناك طلاباً مسجّلين فيه. أزل تسجيلاتهم أولاً ثم أعد المحاولة.");
         }
         courseRepo.deleteById(id);
     }

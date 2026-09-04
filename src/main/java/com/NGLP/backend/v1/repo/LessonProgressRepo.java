@@ -15,6 +15,8 @@ public interface LessonProgressRepo extends JpaRepository<LessonProgress, Long> 
 
     List<LessonProgress> findByEnrollmentId(Long enrollmentId);
 
+    boolean existsByLessonId(Long lessonId);
+
     long countByEnrollmentIdAndCompletedTrue(Long enrollmentId);
 
     long countByEnrollment_User_IdAndCompletedTrue(Long userId);

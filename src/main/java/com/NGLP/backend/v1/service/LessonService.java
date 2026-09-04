@@ -5,8 +5,10 @@ import com.NGLP.backend.v1.entity.Lesson;
 import com.NGLP.backend.v1.exception.BusinessRuleException;
 import com.NGLP.backend.v1.exception.ErrorCode;
 import com.NGLP.backend.v1.repo.CourseRepo;
+import com.NGLP.backend.v1.repo.LessonProgressRepo;
 import com.NGLP.backend.v1.repo.LessonRepo;
 import com.NGLP.backend.v1.repo.LessonTranscriptRepo;
+import com.NGLP.backend.v1.repo.QuizRepo;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,6 +26,8 @@ public class LessonService {
     private final CourseRepo courseRepo;
     private final LessonTranscriptService transcriptionService;
     private final LessonTranscriptRepo lessonTranscriptRepo;
+    private final LessonProgressRepo lessonProgressRepo; // حقن للتحقق من تقدّم الطلاب قبل الحذف
+    private final QuizRepo quizRepo; // حقن للتحقق من الاختبارات المرتبطة قبل الحذف
     private final FileStorageService fileStorageService;
 
     // 1. تم استبدال findAll لنجلب الدروس بناءً على الكورس
@@ -139,6 +143,16 @@ public class LessonService {
 
     @Transactional
     public void delete(Long id) {
+        // التحقق قبل الحذف: هل هناك اختبار مرتبط بهذا الدرس؟
+        if (quizRepo.countByLessonId(id) > 0) {
+            throw new BusinessRuleException("لا يمكن حذف هذا الدرس لأنه يحتوي على اختبار مرتبط به. احذف الاختبار أولاً ثم أعد المحاولة.",
+                    HttpStatus.CONFLICT, ErrorCode.BUSINESS_RULE);
+        }
+        // التحقق: هل هناك طلاب لديهم تقدّم مسجَّل (مشاهدة/إكمال) على هذا الدرس؟
+        if (lessonProgressRepo.existsByLessonId(id)) {
+            throw new BusinessRuleException("لا يمكن حذف هذا الدرس لوجود تقدّم مسجّل لطلاب عليه (مشاهدة أو إكمال). لا يمكن حذفه للحفاظ على سجل تقدّمهم.",
+                    HttpStatus.CONFLICT, ErrorCode.BUSINESS_RULE);
+        }
         lessonRepo.deleteById(id);
     }
 
