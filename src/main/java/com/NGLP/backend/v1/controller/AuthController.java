@@ -75,7 +75,7 @@ public class AuthController {
 
         if (Boolean.TRUE.equals(user.getBlocked())) {
             throw new BusinessRuleException("هذا الحساب محظور، يرجى التواصل مع الإدارة.",
-                    HttpStatus.FORBIDDEN, ErrorCode.FORBIDDEN);
+                    HttpStatus.FORBIDDEN, ErrorCode.ACCOUNT_BLOCKED);
         }
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
