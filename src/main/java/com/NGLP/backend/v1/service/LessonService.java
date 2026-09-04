@@ -2,10 +2,13 @@ package com.NGLP.backend.v1.service;
 
 import com.NGLP.backend.v1.entity.Course;
 import com.NGLP.backend.v1.entity.Lesson;
+import com.NGLP.backend.v1.exception.BusinessRuleException;
+import com.NGLP.backend.v1.exception.ErrorCode;
 import com.NGLP.backend.v1.repo.CourseRepo;
 import com.NGLP.backend.v1.repo.LessonRepo;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -64,6 +67,24 @@ public class LessonService {
         transcriptionService.extractAndSaveTranscript(savedLesson, absolutePath);
 
         return savedLesson;
+    }
+
+    /**
+     * يعيد تشغيل خط التفريغ/الترجمة على فيديو الدرس الموجود (بلا إعادة رفع).
+     * للدروس التي رُفعت قبل ميزة التفريغ ثنائي اللغة، أو لإصلاح تفريغ ناقص.
+     * يعمل بالخلفية عبر {@code extractAndSaveTranscript} (@Async) الذي يحذف القديم أولاً.
+     */
+    public void regenerateTranscript(Long lessonId) {
+        Lesson lesson = findById(lessonId);
+        String videoUrl = lesson.getVideoUrl();
+        if (videoUrl == null || videoUrl.isBlank()) {
+            throw new BusinessRuleException("لا يوجد فيديو مرفوع لهذا الدرس لإعادة توليد التفريغ.",
+                    HttpStatus.CONFLICT, ErrorCode.BUSINESS_RULE);
+        }
+        String fileName = videoUrl.substring(videoUrl.lastIndexOf("/") + 1);
+        String absolutePath = Paths.get("uploads/videos/", fileName).toAbsolutePath().toString();
+        // نداء عبر bean آخر → وكيل @Async يعمل (لا self-invocation).
+        transcriptionService.extractAndSaveTranscript(lesson, absolutePath);
     }
 
     public Lesson uploadImage(Long id, MultipartFile image) {

@@ -12,7 +12,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * ====================================================================
@@ -63,6 +66,9 @@ public class DataInitializer implements CommandLineRunner {
         // 4. نسخ عينات الفيديو تلقائياً لمجلد الرفع
         copyDemoVideos();
 
+        // 4.b ترحيل مقاطع التفريغ القديمة (قبل إضافة عمود اللغة) — تعيينها عربية.
+        backfillTranscriptLanguages();
+
         // 5. بذر الكورسات البرمجية الواقعية
         Course reactCourse = seedCourse("تطوير واجهات الويب باستخدام React", 
             "تعلم بناء واجهات ويب متكاملة وتفاعلية باستخدام مكتبة React الرائدة، مع دعم كامل من المساعد الذكي المدمج لشرح الكود والدرس خطوة بخطوة.",
@@ -110,6 +116,14 @@ public class DataInitializer implements CommandLineRunner {
         // نصوص درس جافاسكربت
         seedTranscript(jsLesson1, 0, 50, "أهلاً بكم في شرح لغة جافاسكربت. جافاسكربت هي لغة البرمجة الأكثر شعبية في العالم، وتستخدم لإضافة الحيوية والتفاعل لمواقع الويب.");
         seedTranscript(jsLesson1, 50, 100, "يمكن تشغيل جافاسكربت مباشرة في متصفح الويب الخاص بك، وهي المحرك الأساسي لكل منصات الويب وتطبيقات الهاتف الحديثة.");
+
+        // نسخة إنكليزية لبعض الدروس كي يكون مبدّل اللغة قابلاً للتجربة فوراً دون تشغيل Whisper/LLM
+        seedTranscript(reactLesson2, TranscriptLanguage.EN, 0, 50, "In this video we learn React in 100 seconds. React lets you write HTML markup inside JavaScript using JSX.");
+        seedTranscript(reactLesson2, TranscriptLanguage.EN, 50, 100, "It handles data binding and event management efficiently and smoothly, which makes building websites a real pleasure.");
+
+        seedTranscript(reactLesson1, TranscriptLanguage.EN, 0, 30, "Welcome to the introduction to the React library. React is a very powerful JavaScript library for building user interfaces.");
+        seedTranscript(reactLesson1, TranscriptLanguage.EN, 30, 60, "React is built around the concept of Components, which let us reuse code and organize the page very well.");
+        seedTranscript(reactLesson1, TranscriptLanguage.EN, 60, 100, "It also relies on a component tree and updates the UI automatically and extremely fast whenever the State changes.");
 
         // 8. بذر تسجيل اشتراكات الطالب الافتراضي بالانتساب التلقائي للكورسات
         seedEnrollment(student, reactCourse, reactLesson1);
@@ -287,17 +301,50 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void seedTranscript(Lesson lesson, Integer startSecond, Integer endSecond, String content) {
-        List<LessonTranscript> existing = transcriptRepo.findByLessonIdOrderByStartSecondAsc(lesson.getId());
+        seedTranscript(lesson, TranscriptLanguage.AR, startSecond, endSecond, content);
+    }
+
+    private void seedTranscript(Lesson lesson, TranscriptLanguage lang, Integer startSecond, Integer endSecond, String content) {
+        List<LessonTranscript> existing =
+                transcriptRepo.findByLessonIdAndLanguageOrderBySegmentIndexAsc(lesson.getId(), lang);
         boolean exists = existing.stream().anyMatch(t -> startSecond.equals(t.getStartSecond()));
-        
+
         if (!exists) {
             transcriptRepo.save(LessonTranscript.builder()
                     .lesson(lesson)
+                    .language(lang)
+                    .segmentIndex(existing.size())
                     .startSecond(startSecond)
                     .endSecond(endSecond)
                     .transcriptContent(content)
+                    .source(TranscriptSource.MANUAL)
                     .build());
         }
+    }
+
+    /**
+     * يعيّن اللغة العربية للمقاطع المحفوظة قبل إضافة عمود {@code language}
+     * (كل التفريغ السابق عربي)، ويملأ {@code segmentIndex} حسب الترتيب الزمني.
+     */
+    private void backfillTranscriptLanguages() {
+        List<LessonTranscript> legacy = transcriptRepo.findByLanguageIsNull();
+        if (legacy.isEmpty()) return;
+
+        Map<Long, List<LessonTranscript>> byLesson = legacy.stream()
+                .filter(t -> t.getLesson() != null)
+                .collect(Collectors.groupingBy(t -> t.getLesson().getId()));
+
+        for (List<LessonTranscript> rows : byLesson.values()) {
+            rows.sort(Comparator.comparingInt(t -> t.getStartSecond() == null ? 0 : t.getStartSecond()));
+            for (int i = 0; i < rows.size(); i++) {
+                LessonTranscript t = rows.get(i);
+                t.setLanguage(TranscriptLanguage.AR);
+                if (t.getSegmentIndex() == null) t.setSegmentIndex(i);
+                if (t.getSource() == null) t.setSource(TranscriptSource.MANUAL);
+            }
+            transcriptRepo.saveAll(rows);
+        }
+        log.info("🔧 backfill: تعيين اللغة العربية لـ {} مقطع تفريغ قديم", legacy.size());
     }
 
     private void seedEnrollment(User student, Course course, Lesson lastWatched) {

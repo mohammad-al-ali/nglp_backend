@@ -1,9 +1,15 @@
 package com.NGLP.backend.v1.controller;
 
+import com.NGLP.backend.v1.dto.LessonTranscriptResponse;
 import com.NGLP.backend.v1.entity.Lesson;
+import com.NGLP.backend.v1.entity.TranscriptLanguage;
+import com.NGLP.backend.v1.exception.BusinessRuleException;
+import com.NGLP.backend.v1.exception.ErrorCode;
 import com.NGLP.backend.v1.service.LessonService;
+import com.NGLP.backend.v1.service.LessonTranscriptService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,14 +21,66 @@ import java.util.List;
 @RequestMapping("/api/v1/lessons")
 public class LessonController {
     private final LessonService lessonService;
+    private final LessonTranscriptService lessonTranscriptService;
 
-    public LessonController(LessonService lessonService) { this.lessonService = lessonService; }
+    public LessonController(LessonService lessonService, LessonTranscriptService lessonTranscriptService) {
+        this.lessonService = lessonService;
+        this.lessonTranscriptService = lessonTranscriptService;
+    }
 
     @GetMapping
     public List<Lesson> getAll(@RequestParam(required = false) Long courseId) { return lessonService.findLessonsByCourse(courseId); }
 
     @GetMapping("/{id}")
     public Lesson getById(@PathVariable Long id) { return lessonService.findById(id); }
+
+    /**
+     * تفريغ الدرس بلغة واحدة (ar افتراضياً) مع قائمة اللغات المتوفرة.
+     * يُرجع {@code available:false} إذا لم يتوفر تفريغ لهذه اللغة بعد.
+     */
+    @GetMapping("/{id}/transcript")
+    public LessonTranscriptResponse getTranscript(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "ar") String lang) {
+        TranscriptLanguage language = TranscriptLanguage.fromCode(lang);
+        if (language == null) {
+            throw new BusinessRuleException(
+                    "لغة التفريغ غير مدعومة. القيم المسموحة: ar أو en.",
+                    HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_ERROR);
+        }
+        return lessonTranscriptService.getTranscript(id, language);
+    }
+
+    /**
+     * إعادة توليد ترجمة لغة معيّنة متزامناً عبر خدمة الترجمة الأوفلاين (للتشغيل اليدوي).
+     * يحذف الترجمة الحالية لتلك اللغة ثم يعيد بناءها من لغة المصدر المتوفرة.
+     * يتطلّب وجود تفريغ مصدر بلغة أخرى مسبقاً — للدروس بلا تفريغ إطلاقاً استخدم
+     * {@code POST /{id}/transcript/regenerate}.
+     */
+    @PostMapping("/{id}/transcript/translate")
+    public LessonTranscriptResponse regenerateTranscriptTranslation(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "ar") String target) {
+        TranscriptLanguage language = TranscriptLanguage.fromCode(target);
+        if (language == null) {
+            throw new BusinessRuleException(
+                    "لغة التفريغ غير مدعومة. القيم المسموحة: ar أو en.",
+                    HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_ERROR);
+        }
+        return lessonTranscriptService.regenerateTranslation(id, language);
+    }
+
+    /**
+     * إعادة تشغيل خط التفريغ كاملاً على فيديو الدرس الموجود (Whisper + الترجمة الأوفلاين).
+     * للدروس المرفوعة قبل الميزة أو لإصلاح تفريغ ناقص. يعمل بالخلفية.
+     */
+    @PostMapping("/{id}/transcript/regenerate")
+    public ResponseEntity<java.util.Map<String, String>> regenerateTranscript(@PathVariable Long id) {
+        lessonService.regenerateTranscript(id);
+        return ResponseEntity.accepted()
+                .body(java.util.Map.of("message",
+                        "بدأت إعادة توليد التفريغ في الخلفية. راجع الدرس بعد دقيقة."));
+    }
 
     @PostMapping(value = "/{courseId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createLessonWithVideo(
